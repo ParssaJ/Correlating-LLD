@@ -54,7 +54,8 @@ def domains_of_interest_with_splitting_attributes():
             ("Educational Services", "61", "62"),
             ("Healthcare & Social Assistance", "62", "71"),
             ("Arts, Entertainment & Recreation", "71", "72"),
-            ("Accommodation & Food Services", "72", "81")]
+            ("Accommodation & Food Services", "72", "81"),
+            ("Public Administration", "91", "919110")]
 
 
 def split_domains(domain_dataframe, lower_bound, upper_bound, naics_code="code", domain_selection="name"):
