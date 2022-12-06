@@ -23,7 +23,7 @@ def remove_nan_and_empty_values_from_list(list_to_filter):
 def create_list_from_dataframe_and_drop_duplicates(dataframe):
     tmp_list = []
     for col in dataframe.columns:
-        tmp_list += tmp_list + dataframe[col].tolist()
+        tmp_list += dataframe[col].tolist()
     return list(dict.fromkeys(tmp_list))
 
 
