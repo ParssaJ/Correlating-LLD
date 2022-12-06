@@ -54,14 +54,15 @@ def search_in_wikidata(webdomains):
         unpacked_webdomain_string += webdomains[i][0]
         unpacked_webdomain_string += webdomains[i][1]
 
-    query_string = "SELECT DISTINCT ?itemLabel ?instanceOfLabel ?industryLabel ?industryAltLabel ?itemdescription ?found_domain \
+    query_string = "SELECT DISTINCT ?itemLabel ?keywordLabel ?keywordAltLabel  ?itemdescription ?found_domain \
                     WHERE { \
                         VALUES ?webdomains_to_search {" + unpacked_webdomain_string + "} \
                         {{?item wdt:P856 ?webdomains_to_search, ?found_domain.}} \
-                        OPTIONAL {?item wdt:P31 ?instanceOf.} \
                         OPTIONAL {?item wdt:P452 ?industry.} \
+                        OPTIONAL {?item wdt:P31 ?instanceOf.} \
+                        BIND(IF(BOUND(?industry),?industry,?instanceOf) AS ?keyword). \
                         OPTIONAL {?item schema:description ?itemdescription. FILTER (lang(?itemdescription) = \"en\").} \
-                    SERVICE wikibase:label { bd:serviceParam wikibase:language \"en\". } \
+                        SERVICE wikibase:label { bd:serviceParam wikibase:language \"en\". } \
                     } \
                     ORDER BY ?itemLabel"
 
@@ -94,8 +95,6 @@ if __name__ == '__main__':
     httpswebdomain = training_data["httpswebdomain"].tolist()
     joined_domains = list(zip(httpwebdomain, httpswebdomain))
 
-    all_domain_keywords = pd.read_csv("csv_files/naics_domain_list.csv")
-
     total_start = time.time()
     try:
         index = 0
@@ -122,6 +121,7 @@ if __name__ == '__main__':
                             wiki_result_all = search_in_wikidata(query_list)
                 else:
                     print("Something totally unexpected happened, please try again later")
+                    print(httpe)
                     sys.exit(-1)
             tmp_index = index
             for element in joined_domains[index:index + increaser]:
@@ -133,10 +133,12 @@ if __name__ == '__main__':
                 keywords_for_domain_guessing = create_list_from_dataframe_and_drop_duplicates(wiki_results)
                 keywords_for_domain_guessing = remove_nan_and_empty_values_from_list(keywords_for_domain_guessing)
                 keywords_for_domain_guessing += return_pluralized_nouns(keywords_for_domain_guessing)
-                training_data.at[tmp_index, "matches"] = keywords_for_domain_guessing
+                if len(keywords_for_domain_guessing) >= 1:
+                    training_data.at[tmp_index, "matches"] = keywords_for_domain_guessing
                 tmp_index += 1
             index += increaser
     finally:
         total_end = time.time()
+        training_data = training_data[training_data["matches"] != ""]
         training_data.to_csv("csv_files/training_data.csv", index=False, mode='w')
         print(f"Took a total of {np.round(((total_end - total_start) / 60), 2)} minutes")
