@@ -89,7 +89,7 @@ if __name__ == '__main__':
 
     training_data = pd.read_csv("csv_files/training_data.csv")
 
-    training_data["matches"] = ""
+    training_data["wikidata_keywords"] = ""
 
     httpwebdomain = training_data["httpwebdomain"].tolist()
     httpswebdomain = training_data["httpswebdomain"].tolist()
@@ -134,11 +134,11 @@ if __name__ == '__main__':
                 keywords_for_domain_guessing = remove_nan_and_empty_values_from_list(keywords_for_domain_guessing)
                 keywords_for_domain_guessing += return_pluralized_nouns(keywords_for_domain_guessing)
                 if len(keywords_for_domain_guessing) >= 1:
-                    training_data.at[tmp_index, "matches"] = keywords_for_domain_guessing
+                    training_data.at[tmp_index, "wikidata_keywords"] = keywords_for_domain_guessing
                 tmp_index += 1
             index += increaser
     finally:
         total_end = time.time()
-        training_data = training_data[training_data["matches"] != ""]
+        training_data = training_data[training_data["wikidata_keywords"] != ""]
         training_data.to_csv("csv_files/training_data.csv", index=False, mode='w')
         print(f"Took a total of {np.round(((total_end - total_start) / 60), 2)} minutes")
