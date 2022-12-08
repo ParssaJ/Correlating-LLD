@@ -40,6 +40,7 @@ if __name__ == '__main__':
         training_data.at[index, "guessed-domain"] = column
         training_data.at[index, "keywords_with_match"] = list_of_matches
 
+    training_data = training_data[training_data["occurence"] >= 2]
     training_data.to_csv("csv_files/training_data.csv", index=False)
     end = time.time()
     print(f"Took a total of {np.round(((end - start) / 60), 2)} minutes")
