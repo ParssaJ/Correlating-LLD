@@ -5,14 +5,14 @@ from matplotlib import pyplot as plt
 
 
 if __name__ == '__main__':
-    rgb_vals = pd.read_csv("csv_files/tmp.csv")
-    domains = list(dict.fromkeys(rgb_vals["Domain"]))
+    rgb_vals = pd.read_csv("csv_files/training_data.csv")
+    domains = list(dict.fromkeys(rgb_vals["guessed-domain"]))
 
     groups = []
-    dunn_df = pd.DataFrame(columns=["Domain", "RGB-Values"])
+    dunn_df = pd.DataFrame(columns=["guessed-domain", "RGB-Values"])
 
     for domain in domains:
-        curr_domain = rgb_vals[rgb_vals["Domain"] == domain]
+        curr_domain = rgb_vals[rgb_vals["guessed-domain"] == domain]
         curr_domain_rgb = curr_domain.values[0][1].split(",")
         curr_domain_rgb = [s.replace("]", "") for s in curr_domain_rgb]
         curr_domain_rgb = [s.replace("[", "") for s in curr_domain_rgb]
@@ -20,7 +20,7 @@ if __name__ == '__main__':
 
         groups.append(curr_domain_rgb)
 
-        tmp_df = pd.DataFrame([[domain, curr_domain_rgb]], columns=["Domain", "RGB-Values"])
+        tmp_df = pd.DataFrame([[domain, curr_domain_rgb]], columns=["guessed-domain", "RGB-Values"])
         dunn_df = pd.concat([dunn_df, tmp_df], ignore_index=True)
 
         stat, pval = normaltest(curr_domain_rgb)
