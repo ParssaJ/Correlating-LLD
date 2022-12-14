@@ -1,33 +1,51 @@
 import pandas as pd
+from PIL import Image
+import numpy as np
+import time
 from scipy.stats import normaltest, kruskal
 from scikit_posthocs import posthoc_dunn
 from matplotlib import pyplot as plt
 
 
+def get_rgb_values(index_string):
+    with Image.open("../LLD_favicons_full_png/" + index_string + ".png") as image:
+        pixels = list(zip(*image.getcolors(maxcolors=32*32)))
+        rgb_vals = [(pixels[1][i],)*pixels[0][i] for i in range(len(pixels[0]))]
+        transformed_rgb = [np.log2(int("".join(map(str, color)))+1)
+                           for colors in rgb_vals
+                           for color in colors]
+        return transformed_rgb
+
+
 if __name__ == '__main__':
-    rgb_vals = pd.read_csv("csv_files/training_data.csv")
-    domains = list(dict.fromkeys(rgb_vals["guessed-domain"]))
+    start = time.time()
+
+    training_data = pd.read_csv("csv_files/training_data.csv")
+    data = training_data[["Webdomains", "guessed-domain"]]
+    data = data.assign(index_in_pkl_file="")
+    data = data.assign(rgb_values="")
+
+    meta_data = pd.read_pickle("LLD-icon-full_data-names.pkl")
+    meta_data = meta_data.astype(str)
+    meta_data = pd.DataFrame(meta_data.reshape(-1, 1)).rename(columns={0: "domain_name"})
+    data['index_in_pkl_file'] = data["Webdomains"].apply(lambda x:
+                                                         f"{meta_data[meta_data['domain_name'] == x].index.values[0]:06}")
+
+    data['rgb_values'] = data["index_in_pkl_file"].apply(get_rgb_values)
 
     groups = []
-    dunn_df = pd.DataFrame(columns=["guessed-domain", "RGB-Values"])
-
+    domains = list(dict.fromkeys(data["guessed-domain"]))
     for domain in domains:
-        curr_domain = rgb_vals[rgb_vals["guessed-domain"] == domain]
-        curr_domain_rgb = curr_domain.values[0][1].split(",")
-        curr_domain_rgb = [s.replace("]", "") for s in curr_domain_rgb]
-        curr_domain_rgb = [s.replace("[", "") for s in curr_domain_rgb]
-        curr_domain_rgb = [float(x) for x in curr_domain_rgb]
+        domain_df = data[data["guessed-domain"] == domain]["rgb_values"]
+        domain_rgb = domain_df.explode("rgb_values").tolist()
+        groups.append(domain_rgb)
 
-        groups.append(curr_domain_rgb)
+        stat, pval = normaltest(domain_rgb)
 
-        tmp_df = pd.DataFrame([[domain, curr_domain_rgb]], columns=["guessed-domain", "RGB-Values"])
-        dunn_df = pd.concat([dunn_df, tmp_df], ignore_index=True)
-
-        stat, pval = normaltest(curr_domain_rgb)
         if pval <= 0.05:
-            print(f"Domain: {domain} is likely normal-distributed")
+            print(f"Domain: {domain} is likely NOT normal distributed")
         else:
-            print(f"Domain: {domain} is likely NOT normal-distributed")
+            print(f"Domain: {domain} is likely normal distributed")
 
     # According to the normaltest none of the groups are normal-distributed
     # Use the Kruskal-Wallis-Test("nonparametric-equivalent of ANOVA") instead
@@ -42,8 +60,10 @@ if __name__ == '__main__':
         print(f"The Median is likely (almost) equal in each group")
 
     # Dunnet-Test
-    dunn_df = dunn_df.explode("RGB-Values")
-    dunn = posthoc_dunn(dunn_df, val_col='RGB-Values', group_col='Domain', p_adjust='bonferroni')
+    dunn = posthoc_dunn(groups, p_adjust='bonferroni')
     plt.matshow(dunn)
     plt.colorbar()
     plt.show()
+
+    end = time.time()
+    print(f"Took a total of {np.round(((end - start) / 60), 2)} minutes")
