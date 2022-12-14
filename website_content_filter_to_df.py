@@ -56,7 +56,7 @@ if __name__ == '__main__':
                                    and token in english_words_only
                                    and token.isalpha()]
                 domain_keywords = list(dict.fromkeys(domain_keywords))
-                if len(domain_keywords) >= 10:
+                if len(domain_keywords) >= 50:
                     print(f"{len(domain_keywords)} keywords were found")
                     training_data.at[index, "website_content"] = domain_keywords
 
