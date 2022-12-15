@@ -3,17 +3,15 @@ from PIL import Image
 import numpy as np
 import time
 from scipy.stats import normaltest, kruskal
-from scikit_posthocs import posthoc_dunn
-from matplotlib import pyplot as plt
+from scikit_posthocs import posthoc_conover
 
 
 def get_rgb_values(index_string):
     with Image.open("../LLD_favicons_full_png/" + index_string + ".png") as image:
-        pixels = list(zip(*image.getcolors(maxcolors=32*32)))
-        rgb_vals = [(pixels[1][i],)*pixels[0][i] for i in range(len(pixels[0]))]
-        transformed_rgb = [np.log2(int("".join(map(str, color)))+1)
-                           for colors in rgb_vals
-                           for color in colors]
+        image = image.convert('HSV')
+        pixels = list(zip(*image.getcolors(maxcolors=32 * 32)))
+        rgb_vals = [(pixels[1][i],) * pixels[0][i] for i in range(len(pixels[0]))]
+        transformed_rgb = [color[0] for colors in rgb_vals for color in colors]
         return transformed_rgb
 
 
@@ -41,7 +39,6 @@ if __name__ == '__main__':
         groups.append(domain_rgb)
 
         stat, pval = normaltest(domain_rgb)
-
         if pval <= 0.05:
             print(f"Domain: {domain} is likely NOT normal distributed")
         else:
@@ -59,11 +56,17 @@ if __name__ == '__main__':
     else:
         print(f"The Median is likely (almost) equal in each group")
 
-    # Dunnet-Test
-    dunn = posthoc_dunn(groups, p_adjust='bonferroni')
-    plt.matshow(dunn)
-    plt.colorbar()
-    plt.show()
+    # Conover-Test
+    cono = posthoc_conover(groups, p_adjust='bonferroni')
+    cono = cono[cono == False]
+    cono = cono.unstack().dropna().index.tolist()
+    list_of_different_pairs = []
+    for pair in cono:
+        first_el, sec_el = pair
+        if pair not in list_of_different_pairs and (sec_el, first_el) not in list_of_different_pairs:
+            list_of_different_pairs.append(pair)
+    print(f"List of stat. different groups: ")
+    print(list_of_different_pairs)
 
     end = time.time()
     print(f"Took a total of {np.round(((end - start) / 60), 2)} minutes")
