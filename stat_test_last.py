@@ -2,17 +2,19 @@ import pandas as pd
 from PIL import Image
 import numpy as np
 import time
+import colorsys
 from scipy.stats import normaltest, kruskal
-from scikit_posthocs import posthoc_conover
+from scikit_posthocs import posthoc_nemenyi
+from matplotlib import pyplot as plt
 
 
-def get_rgb_values(index_string):
+def get_hsv_values(index_string):
     with Image.open("../LLD_favicons_full_png/" + index_string + ".png") as image:
-        image = image.convert('HSV')
         pixels = list(zip(*image.getcolors(maxcolors=32 * 32)))
         rgb_vals = [(pixels[1][i],) * pixels[0][i] for i in range(len(pixels[0]))]
-        transformed_rgb = [color[0] for colors in rgb_vals for color in colors]
-        return transformed_rgb
+        transformed_hsv = [colorsys.rgb_to_hsv((color[0]/255), (color[1]/255), (color[2]/255))
+                           for colors in rgb_vals for color in colors]
+        return transformed_hsv
 
 
 if __name__ == '__main__':
@@ -29,44 +31,67 @@ if __name__ == '__main__':
     data['index_in_pkl_file'] = data["Webdomains"].apply(lambda x:
                                                          f"{meta_data[meta_data['domain_name'] == x].index.values[0]:06}")
 
-    data['rgb_values'] = data["index_in_pkl_file"].apply(get_rgb_values)
+    data['hsv_values'] = data["index_in_pkl_file"].apply(get_hsv_values)
+
+    hue_list = data['hsv_values'].tolist()
+    hue_list = [hue for hues in hue_list for hue in hues]
+    hue_list_test = [hue[0] for hue in hue_list]
+    stat, pval = normaltest(hue_list_test)
+
+    if pval <= .05:
+        print(f"Hue Values are likely NOT normal distributed")
+    else:
+        print(f"Hue Values are likely normal distributed")
+
+    # Maybe the filtered hue-Values are normal-distributed?
+    hue_list_test = [hsv[0] for hsv in hue_list if hsv[1] >= .95 and hsv[2] >= .5]
+    stat, pval = normaltest(hue_list_test)
+
+    if pval <= .05:
+        print(f"FILTERED Hue Values are likely NOT normal distributed")
+    else:
+        print(f"FILTERED Hue Values are likely normal distributed")
 
     groups = []
     domains = list(dict.fromkeys(data["guessed-domain"]))
+
     for domain in domains:
-        domain_df = data[data["guessed-domain"] == domain]["rgb_values"]
-        domain_rgb = domain_df.explode("rgb_values").tolist()
-        groups.append(domain_rgb)
+        domain_df = data[data["guessed-domain"] == domain]["hsv_values"]
+        domain_hsv = domain_df.explode("hsv_values").tolist()
+        filtered_hue_values = [hue for hue, sat, val in domain_hsv if sat >= .9 and val >= .5]
+        groups.append(filtered_hue_values)
 
-        stat, pval = normaltest(domain_rgb)
-        if pval <= 0.05:
-            print(f"Domain: {domain} is likely NOT normal distributed")
-        else:
-            print(f"Domain: {domain} is likely normal distributed")
-
-    # According to the normaltest none of the groups are normal-distributed
-    # Use the Kruskal-Wallis-Test("nonparametric-equivalent of ANOVA") instead
+    # The normal-distribution of the hue-values is not given, use the kruskal-wallis-test
     stat, pval = kruskal(groups[0], groups[1], groups[2], groups[3], groups[4],
                          groups[5], groups[6], groups[7], groups[8], groups[9],
                          groups[10], groups[11], groups[12], groups[13],
                          groups[14], groups[15], groups[16], groups[17])
 
     if pval <= 0.05:
-        print(f"The Median is likely different in each group")
+        print(f"The Population-Median is likely different in each group")
     else:
-        print(f"The Median is likely (almost) equal in each group")
+        print(f"The Population-Median is likely (almost) equal in each group")
 
-    # Conover-Test
-    cono = posthoc_conover(groups, p_adjust='bonferroni')
-    cono = cono[cono == False]
-    cono = cono.unstack().dropna().index.tolist()
-    list_of_different_pairs = []
-    for pair in cono:
+    # Nemenyi test
+    nemenyi = posthoc_nemenyi(groups)
+    plt.matshow(nemenyi)
+    plt.colorbar()
+    plt.show()
+    nemenyi = nemenyi < .05
+    nemenyi = nemenyi[nemenyi == False]
+    nemenyi = nemenyi.unstack().dropna().index.tolist()
+    list_of_not_different_pairs = []
+    for pair in nemenyi:
         first_el, sec_el = pair
-        if pair not in list_of_different_pairs and (sec_el, first_el) not in list_of_different_pairs:
-            list_of_different_pairs.append(pair)
-    print(f"List of stat. different groups: ")
-    print(list_of_different_pairs)
-
+        if pair not in list_of_not_different_pairs \
+                and (sec_el, first_el) not in list_of_not_different_pairs:
+            first_num, second_num = pair
+            first_domain = domains[first_num-1]
+            second_domain = domains[second_num-1]
+            if first_domain != second_domain:
+                list_of_not_different_pairs.append((first_domain, second_domain))
+    print(f"List of not stat. different groups, {len(list_of_not_different_pairs)} (in total): ")
+    print(list_of_not_different_pairs)
+    print(domains)
     end = time.time()
     print(f"Took a total of {np.round(((end - start) / 60), 2)} minutes")

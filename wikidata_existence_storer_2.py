@@ -4,6 +4,7 @@ from SPARQLWrapper import SPARQLWrapper, JSON
 import numpy as np
 from urllib.error import HTTPError
 from datetime import datetime
+import os
 
 
 def trim_b_and_apostrophs(to_shorten):
@@ -77,6 +78,9 @@ def store_wikidata_information(domains_to_query, increaser=75, index=0):
 
 if __name__ == '__main__':
     start = time.time()
+
+    if os.path.exists("csv_files/training_data.csv"):
+        raise FileExistsError("Please delete the old training_data.csv File to continue")
 
     data = pd.read_pickle("LLD-icon-full_data-names.pkl")
     query_list = [get_ready_for_wikidata_search(x) for x in data]

@@ -16,8 +16,10 @@ def return_pluralized_nouns(nouns):
 
 
 def remove_nan_and_empty_values_from_list(list_to_filter):
-    return [keyword for keyword in list_to_filter if type(keyword) == str and keyword != '' and len(keyword) > 2
-            and keyword != 'nan' and keyword != ' ' and keyword != 'http' and keyword != 'https' and keyword.isalpha()]
+    return [keyword for keyword in list_to_filter if type(keyword) == str
+            and len(keyword) > 2
+            and keyword.isalpha()
+            and keyword not in forbidden_keywords]
 
 
 def create_list_from_dataframe_and_drop_duplicates(dataframe):
@@ -79,7 +81,7 @@ def search_in_wikidata(webdomains):
 
 
 if __name__ == '__main__':
-
+    forbidden_keywords = ['', ' ', 'nan', 'http', 'https']
     inflect_engine = inflect.engine()
 
     sparql = SPARQLWrapper("https://query.wikidata.org/sparql",

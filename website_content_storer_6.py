@@ -44,6 +44,7 @@ async def main():
         await session.close()
 
 if __name__ == '__main__':
+    # The Template was taken from: https://www.youtube.com/watch?v=Ii7x4mpIhIs&ab_channel=JohnWatsonRooney
     start = time.time()
 
     asyncio.run(main())
